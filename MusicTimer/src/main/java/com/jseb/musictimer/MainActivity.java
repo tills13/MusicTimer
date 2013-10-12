@@ -73,6 +73,16 @@ public class MainActivity extends Activity {
     }
 
 	@Override
+	public boolean onPrepareOptionsMenu(Menu menu) {
+		// figure this out later
+		Calendar cal = Calendar.getInstance();
+		Menu submenu = menu.getItem(0).getSubMenu();
+		//submenu.getItem(0).setTitle("30 mins");
+
+		return true;
+	}
+
+	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch(item.getItemId()) {
 			case R.id.simple_30mins:

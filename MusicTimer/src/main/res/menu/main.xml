@@ -1,0 +1,31 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@+id/action_simple"
+        android:title="@string/action_simple"
+        android:orderInCategory="100"
+        android:showAsAction="never" >
+        <menu>
+
+        <item android:id="@+id/simple_30mins"
+            android:title="@string/simple_30mins"
+            android:orderInCategory="100"
+            android:showAsAction="never" />
+        <item android:id="@+id/simple_1hour"
+            android:title="@string/simple_1hour"
+            android:orderInCategory="100"
+            android:showAsAction="never" />
+        <item android:id="@+id/simple_2hours"
+            android:title="@string/simple_2hours"
+            android:orderInCategory="100"
+            android:showAsAction="never" />
+        <item android:id="@+id/simple_3hours"
+            android:title="@string/simple_3hours"
+            android:orderInCategory="100"
+            android:showAsAction="never" />
+        </menu>
+    </item>
+
+    <item android:id="@+id/action_date_picker"
+        android:title="end time"
+        android:orderInCategory="100"
+        android:showAsAction="never"/>
+</menu>

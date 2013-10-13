@@ -2,9 +2,7 @@ package com.jseb.musictimer;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.Context;
 import android.content.DialogInterface;
-import android.media.AudioManager;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -15,18 +13,24 @@ import android.widget.TextView;
 import android.widget.TimePicker;
 import android.widget.Toast;
 
+import com.jseb.musictimer.listeners.PickerListener;
+
 import java.util.Calendar;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends Activity {
+	private ScheduledFuture mTask;
+	public boolean running;
+	public MenuItem timerinfo;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main_activity);
+
 		final NumberPicker hours = (NumberPicker) findViewById(R.id.hour_picker);
 		final NumberPicker minutes = (NumberPicker) findViewById(R.id.minute_picker);
 		final TextView end_time = (TextView) findViewById(R.id.end_time);
@@ -74,10 +78,12 @@ public class MainActivity extends Activity {
 
 	@Override
 	public boolean onPrepareOptionsMenu(Menu menu) {
-		// figure this out later
-		Calendar cal = Calendar.getInstance();
-		Menu submenu = menu.getItem(0).getSubMenu();
-		//submenu.getItem(0).setTitle("30 mins");
+		for (int i = 0; i < menu.size(); i++) {
+			if (menu.getItem(i).getItemId() == (R.id.action_info)) {
+				timerinfo = menu.getItem(i);
+				timerinfo.setEnabled(this.running);
+			}
+		}
 
 		return true;
 	}
@@ -99,6 +105,10 @@ public class MainActivity extends Activity {
 				break;
 			case R.id.action_date_picker:
 				showDatePicker();
+				break;
+			case R.id.action_info:
+				showTimerInfo();
+				break;
 		}
 
 		return false;
@@ -106,29 +116,22 @@ public class MainActivity extends Activity {
 
 	public void showDatePicker() {
 		View view = getLayoutInflater().inflate(R.layout.date_picker_dialog, null);
+
 		final TimePicker picker = (TimePicker) view.findViewById(R.id.time_picker);
 		final TextView end_time = (TextView) view.findViewById(R.id.end_time_dialog);
+		final Calendar cal = Calendar.getInstance();
+
 		picker.setIs24HourView(true);
 		end_time.setText("ends now");
 
-		picker.setOnTimeChangedListener(new TimePicker.OnTimeChangedListener() {
-			@Override
-			public void onTimeChanged(TimePicker view, int hourOfDay, int minute) {
-				Calendar cal = Calendar.getInstance();
-				int curHour = cal.get(Calendar.HOUR_OF_DAY);
-
-				cal.set(Calendar.HOUR_OF_DAY, hourOfDay);
-				cal.set(Calendar.MINUTE, minute);
-				end_time.setText(String.format("ends at %02d:%02d", cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE)) + ((hourOfDay < curHour) ? " (tomorrow)" : ""));
-			}
-		});
+		picker.setCurrentHour(cal.get(Calendar.HOUR_OF_DAY));
+		picker.setOnTimeChangedListener(new PickerListener(end_time));
 
 		AlertDialog.Builder builder = new AlertDialog.Builder(this);
 		builder.setTitle("Custom end time: ");
 		builder.setPositiveButton("start", new DialogInterface.OnClickListener() {
 			@Override
 			public void onClick(DialogInterface dialog, int which) {
-				Calendar cal = Calendar.getInstance();
 				int hours, mins;
 				int hour = picker.getCurrentHour();
 				int minute = picker.getCurrentMinute();
@@ -159,18 +162,64 @@ public class MainActivity extends Activity {
 		dialog.show();
 	}
 
-	public void startTimer(int hours, int minutes) {
-		final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
-		int delay = (hours * 3600) + (minutes * 60) * 1000;
-
-		new Timer().schedule(new TimerTask() {
+	public void showTimerInfo() {
+		new AlertDialog.Builder(this).setPositiveButton("continue", new DialogInterface.OnClickListener() {
 			@Override
-			public void run() {
-				((AudioManager) getSystemService(Context.AUDIO_SERVICE)).requestAudioFocus(null, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
+			public void onClick(DialogInterface dialog, int which) {
+				dialog.dismiss();
 			}
-		}, delay);
+		}).setNegativeButton("cancel timer", new DialogInterface.OnClickListener() {
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				stopTimer();
+			}
+		}).setMessage("Music will stop in " + mTask.getDelay(TimeUnit.SECONDS) + " seconds.").create().show();
+	}
 
-		Toast.makeText(this, "music will stop in " + hours + " hour(s) and " + minutes + " minute(s)", Toast.LENGTH_LONG).show();
+	public void startTimer(final int hours, final int minutes) {
+		final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+		final int delay = ((hours * 3600) + (minutes * 60)) * 1000;
+		final MainActivity mContext = this;
+
+		if (running) {
+			new AlertDialog.Builder(this).setTitle("Timer already running...").setMessage("Do you wish to overwrite this timer?").setPositiveButton("yes", new DialogInterface.OnClickListener() {
+				@Override
+				public void onClick(DialogInterface dialog, int which) {
+					stopTimer();
+					mTask = scheduler.schedule(new GetAudioFocusTask(mContext), delay, TimeUnit.MILLISECONDS);
+					Toast.makeText(getApplicationContext(), "music will stop in " + hours + " hour(s) and " + minutes + " minute(s)", Toast.LENGTH_LONG).show();
+					running = true;
+					timerinfo.setEnabled(true);
+				}
+			}).setNegativeButton("no", new DialogInterface.OnClickListener() {
+				@Override
+				public void onClick(DialogInterface dialog, int which) {
+
+				}
+			}).create().show();
+		} else {
+			mTask = scheduler.schedule(new GetAudioFocusTask(mContext), delay, TimeUnit.MILLISECONDS);
+			Toast.makeText(this, "music will stop in " + hours + " hour(s) and " + minutes + " minute(s)", Toast.LENGTH_LONG).show();
+			timerinfo.setEnabled(true);
+			running = true;
+		}
+	}
+
+	public void stopTimer() {
+		if (this.running) {
+			mTask.cancel(true);
+			this.timerinfo.setEnabled(false);
+			this.running = false;
+		}
+	}
+
+	public void setRunning(boolean running) {
+		this.running = running;
+
+		if (this.running == false) {
+			mTask = null;
+			timerinfo.setEnabled(false);
+		}
 	}
 }

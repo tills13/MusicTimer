@@ -24,6 +24,6 @@ public class PickerListener implements TimePicker.OnTimeChangedListener {
 		cal.set(Calendar.HOUR_OF_DAY, hourOfDay);
 		cal.set(Calendar.MINUTE, minute);
 		if (curHour == cal.get(Calendar.HOUR_OF_DAY) && curMin == cal.get(Calendar.MINUTE)) end_time.setText("ends now");
-		else end_time.setText(String.format("ends at %02d:%02d", cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE)) + ((hourOfDay < curHour) ? " (tomorrow)" : ""));
+		else end_time.setText(String.format("ends at %02d:%02d", cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE)) + (((hourOfDay < curHour) || (hourOfDay == curHour && minute < curMin)) ? " (tomorrow)" : ""));
 	}
 }

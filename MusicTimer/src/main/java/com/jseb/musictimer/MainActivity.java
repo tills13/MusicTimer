@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
@@ -24,7 +25,7 @@ import java.util.concurrent.TimeUnit;
 public class MainActivity extends Activity {
 	private ScheduledFuture mTask;
 	public boolean running;
-	public MenuItem timerinfo;
+	public MenuItem mMenuItem;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,10 +45,11 @@ public class MainActivity extends Activity {
 		findViewById(R.id.button_container).setOnTouchListener(new View.OnTouchListener() {
 			@Override
 			public boolean onTouch(View v, MotionEvent event) {
-				if (event.getAction() == MotionEvent.ACTION_DOWN) {
-					v.setBackgroundResource(android.R.color.holo_blue_light);
+				if (event.getAction() == MotionEvent.ACTION_DOWN) v.setBackgroundResource(R.color.ab_color);
+				else if (event.getAction() == MotionEvent.ACTION_UP) {
 					startTimer(hours.getValue(), minutes.getValue());
-				} else if (event.getAction() == MotionEvent.ACTION_UP) v.setBackgroundResource(android.R.color.transparent);
+					v.setBackgroundResource(android.R.color.transparent);
+				}
 
 				return true;
 			}
@@ -69,7 +71,6 @@ public class MainActivity extends Activity {
 		minutes.setOnValueChangedListener(listener);
     }
 
-
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.main, menu);
@@ -80,8 +81,8 @@ public class MainActivity extends Activity {
 	public boolean onPrepareOptionsMenu(Menu menu) {
 		for (int i = 0; i < menu.size(); i++) {
 			if (menu.getItem(i).getItemId() == (R.id.action_info)) {
-				timerinfo = menu.getItem(i);
-				timerinfo.setEnabled(this.running);
+				mMenuItem = menu.getItem(i);
+				mMenuItem.setEnabled(this.running);
 			}
 		}
 
@@ -162,9 +163,17 @@ public class MainActivity extends Activity {
 		dialog.show();
 	}
 
-
 	public void showTimerInfo() {
-		new AlertDialog.Builder(this).setPositiveButton("continue", new DialogInterface.OnClickListener() {
+		if (mTask.getDelay(TimeUnit.MILLISECONDS) < 0) {
+			stopTimer();
+			return;
+		}
+
+		View view = getLayoutInflater().inflate(R.layout.timer_info_dialog, null);
+		final TextView timeLeft = ((TextView) view.findViewById(R.id.time_left));
+		final CountDownTimer timer;
+
+		final AlertDialog dialog = new AlertDialog.Builder(this).setPositiveButton("continue", new DialogInterface.OnClickListener() {
 			@Override
 			public void onClick(DialogInterface dialog, int which) {
 				dialog.dismiss();
@@ -174,23 +183,42 @@ public class MainActivity extends Activity {
 			public void onClick(DialogInterface dialog, int which) {
 				stopTimer();
 			}
-		}).setMessage("Music will stop in " + mTask.getDelay(TimeUnit.SECONDS) + " seconds.").create().show();
+		}).setView(view).create();
+
+		timer = new CountDownTimer(mTask.getDelay(TimeUnit.MILLISECONDS), 1000) {
+			@Override
+			public void onTick(long seconds) {
+				seconds = seconds / 1000;
+				timeLeft.setText(String.format(getString(R.string.timer_info), (seconds / 3600), ((seconds % 3600) / 60), ((seconds % 3600) % 60)));
+			}
+
+			@Override
+			public void onFinish() {
+				dialog.dismiss();
+			}
+		}.start();
+
+		dialog.show();
 	}
 
 	public void startTimer(final int hours, final int minutes) {
 		final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 		final int delay = ((hours * 3600) + (minutes * 60)) * 1000;
-		final MainActivity mContext = this;
+
+		if (delay == 0) {
+			Toast.makeText(this, "really?", Toast.LENGTH_LONG).show();
+			return;
+		}
 
 		if (running) {
 			new AlertDialog.Builder(this).setTitle("Timer already running...").setMessage("Do you wish to overwrite this timer?").setPositiveButton("yes", new DialogInterface.OnClickListener() {
 				@Override
 				public void onClick(DialogInterface dialog, int which) {
 					stopTimer();
-					mTask = scheduler.schedule(new GetAudioFocusTask(mContext), delay, TimeUnit.MILLISECONDS);
+					mTask = scheduler.schedule(new GetAudioFocusTask(MainActivity.this), delay, TimeUnit.MILLISECONDS);
 					Toast.makeText(getApplicationContext(), "music will stop in " + hours + " hour(s) and " + minutes + " minute(s)", Toast.LENGTH_LONG).show();
+					MainActivity.this.mMenuItem.setEnabled(true);
 					running = true;
-					timerinfo.setEnabled(true);
 				}
 			}).setNegativeButton("no", new DialogInterface.OnClickListener() {
 				@Override
@@ -199,27 +227,27 @@ public class MainActivity extends Activity {
 				}
 			}).create().show();
 		} else {
-			mTask = scheduler.schedule(new GetAudioFocusTask(mContext), delay, TimeUnit.MILLISECONDS);
+			mTask = scheduler.schedule(new com.jseb.musictimer.GetAudioFocusTask(this), delay, TimeUnit.MILLISECONDS);
 			Toast.makeText(this, "music will stop in " + hours + " hour(s) and " + minutes + " minute(s)", Toast.LENGTH_LONG).show();
-			timerinfo.setEnabled(true);
+			this.mMenuItem.setEnabled(true);
 			running = true;
 		}
 	}
 
 	public void stopTimer() {
-		if (this.running) {
-			mTask.cancel(true);
-			this.timerinfo.setEnabled(false);
-			this.running = false;
-		}
+		if (this.running) mTask.cancel(true);
+
+		this.mMenuItem.setEnabled(false);
+		this.running = false;
 	}
 
 	public void setRunning(boolean running) {
 		this.running = running;
 
 		if (this.running == false) {
+			mTask.cancel(true);
 			mTask = null;
-			timerinfo.setEnabled(false);
+			this.mMenuItem.setEnabled(false);
 		}
 	}
 }

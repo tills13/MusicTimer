@@ -21,6 +21,7 @@
         android:id="@+id/end_time_dialog"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
+        style="@style/EndTimeText"
         android:padding="5dp"
         android:gravity="center"/>
 </LinearLayout>

@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Music Timer</string>
-    <string name="end_time"></string>
     <string name="action_simple">simple</string>
     <string name="action_info">timer info</string>
     <string name="button_text">start timer</string>
+
     <string name="simple_30mins">30 minutes</string>
     <string name="simple_1hour">1 hour</string>
     <string name="simple_2hours">2 hours</string>
     <string name="simple_3hours">3 hours</string>
+
+    <string name="timer_info" formatted="false">%02d:%02d:%02d</string>
 </resources>

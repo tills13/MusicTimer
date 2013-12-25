@@ -23,9 +23,9 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends Activity {
-	private ScheduledFuture mTask;
-	public boolean running;
-	public MenuItem mMenuItem;
+	private static ScheduledFuture mTask;
+	public static boolean running;
+	public static MenuItem mMenuItem;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -234,11 +234,11 @@ public class MainActivity extends Activity {
 		}
 	}
 
-	public void stopTimer() {
-		if (this.running) mTask.cancel(true);
+	public static void stopTimer() {
+		if (running) mTask.cancel(true);
 
-		this.mMenuItem.setEnabled(false);
-		this.running = false;
+		mMenuItem.setEnabled(false);
+		running = false;
 	}
 
 	public void setRunning(boolean running) {
